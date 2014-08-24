@@ -19,9 +19,10 @@ struct stream_config{
 	gchar *address;
 	gchar *service;
 	gchar *mount;
+	gint  width;
+	gint  height;
 	/* some runtime data */
 	struct {
-		void *loop;
 		void *pipeline;
 	}r;
 };

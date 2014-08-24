@@ -1,4 +1,5 @@
 #include <gst/gst.h>
+#include <glib-unix.h>
 #include <gst/rtsp-server/rtsp-server.h>
 #include "common.h"
 #include "configparse.h"
@@ -28,9 +29,9 @@ gpointer rtsp_server_instance(gpointer data)
 	mounts = gst_rtsp_server_get_mount_points(server);
 
 	str = g_strdup_printf("( "
-			      "v4l2src device=%s ! video/x-raw, width=640, height=480 ! "
+			      "v4l2src device=%s ! video/x-raw, width=%d, height=%d ! "
 			      " videoconvert ! %s ! h264parse ! rtph264pay pt=96 name=pay0 "
-			      ")", priv->dev_path, priv->encoder);
+			      ")", priv->dev_path, priv->width, priv->height, priv->encoder);
 	/* make a media factory for a test stream. The default media factory can use
 	 * gst-launch syntax to create pipelines. 
 	 * any launch line works as long as it contains elements named pay%d. Each
@@ -49,8 +50,7 @@ gpointer rtsp_server_instance(gpointer data)
 	g_object_unref(mounts);
 
 	/* attach the server to the default maincontext */
-	gst_rtsp_server_attach(server,
-			g_main_loop_get_context(priv->r.loop));
+	gst_rtsp_server_attach(server, NULL);
 
 	/* start serving */
 	GST_INFO_OBJECT(factory, "stream ready at rtsp://%s:%s%s",
@@ -58,8 +58,14 @@ gpointer rtsp_server_instance(gpointer data)
 	return NULL;
 }
 
+gpointer start_rtsp_server(gpointer data)
+{
+	GThread *thread;
+	thread = g_thread_new("stream", rtsp_server_instance, data);
+	return g_thread_join(thread);
+}
 inline static gint traverse_seq
-    (GSequence * seq, GThreadFunc func, gpointer loop) {
+    (GSequence * seq, GThreadFunc func) {
 	GSequenceIter *begin, *current, *next;
 	gint traversed = 0;
 	struct stream_config *data;
@@ -72,7 +78,6 @@ inline static gint traverse_seq
 		current = next;
 
 		data = (struct stream_config *) g_sequence_get(current);
-		data->r.loop = loop;
 		func(data);
 		traversed++;
 
@@ -106,13 +111,14 @@ int main(int argc, char *argv[])
 	loop = g_main_loop_new(NULL, FALSE);
 
 	config = config_init(NULL);
+	g_unix_signal_add(SIGTERM, (GSourceFunc)g_main_loop_quit, loop);
+	g_unix_signal_add(SIGINT, (GSourceFunc)g_main_loop_quit, loop);
 
-	traverse_seq(config->stream_list, rtsp_server_instance, loop);
-
-	//traverse_seq(config->stream_list, clean_up_stream, NULL);
+	traverse_seq(config->stream_list, start_rtsp_server);
 
 	g_main_loop_run(loop);
 
+	traverse_seq(config->stream_list, clean_up_stream);
 	g_sequence_free(config->stream_list);
 	g_free(config->general);
 	g_free(config);

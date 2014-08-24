@@ -1,8 +1,7 @@
 #include "common.h"
 #include <gst/gst.h>
 #include <glib.h> 
-#include <stdint.h>
-#include <stdbool.h>
+#include <string.h>
 
 static gboolean config_decode
 (GKeyFile *file, struct config_head *config);
@@ -56,9 +55,10 @@ static gboolean config_decode(GKeyFile *file, struct config_head *config){
 
 	groups = g_key_file_get_groups(file, &length);
 	if (0 == length)
-		return false;
+		return FALSE;
 
 	if (g_key_file_has_group(file, "general")){
+		memset(config->general, 0, sizeof(struct stream_config));
 		config->general->address =
 			g_key_file_get_value
 			(file, "general", "address", NULL);
@@ -68,14 +68,15 @@ static gboolean config_decode(GKeyFile *file, struct config_head *config){
 		config->general->encoder =
 			g_key_file_get_value
 			(file, "general", "encoder", NULL);
+		config->general->width =
+			g_key_file_get_integer
+			(file, "general", "width", NULL);
+		config->general->height =
+			g_key_file_get_integer
+			(file, "general", "height", NULL);
 		config->general->enable = TRUE;
 
 		config->general->name = "general";
-		/* we don't need them below*/
-		config->general->dev_path = NULL;
-		config->general->mount = NULL;
-		config->general->r.loop = NULL;
-		config->general->r.pipeline = NULL;
 	}
 
 	regex = g_regex_new("camera[0-9]{1,}", 0, 0, NULL);
@@ -113,8 +114,15 @@ static gboolean config_decode(GKeyFile *file, struct config_head *config){
 				g_key_file_get_value
 				(file, *groups, "encoder", 
 				 NULL);
+			data->width =
+				g_key_file_get_integer
+				(file, *groups, "width", 
+				 NULL);
+			data->height =
+				g_key_file_get_integer
+				(file, *groups, "height", 
+				 NULL);
 
-			data->r.loop = NULL;
 			data->r.pipeline = NULL;
 
 			g_sequence_append(config->stream_list, (gpointer)data);
@@ -151,6 +159,10 @@ static gboolean config_set_default(struct config_head *config){
 			data->address = config->general->address;
 		if (NULL == data->service)
 			data->service = config->general->service;
+		if (0 == data->width)
+			data->width = config->general->width;
+		if (0 == data->height)
+			data->height = config->general->height;
 
                 next = g_sequence_iter_next(current);
 	}
