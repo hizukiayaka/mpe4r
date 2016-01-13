@@ -65,9 +65,12 @@ static gboolean config_decode(GKeyFile *file, struct config_head *config){
 		config->general->service =
 			g_key_file_get_value
 			(file, "general", "service", NULL);
-		config->general->encoder =
+		config->general->video_encoder =
 			g_key_file_get_value
-			(file, "general", "encoder", NULL);
+			(file, "general", "video_encoder", NULL);
+		config->general->sound_encoder =
+			g_key_file_get_value
+			(file, "general", "sound_encoder", NULL);
 		config->general->width =
 			g_key_file_get_integer
 			(file, "general", "width", NULL);
@@ -110,9 +113,13 @@ static gboolean config_decode(GKeyFile *file, struct config_head *config){
 				g_key_file_get_value
 				(file, *groups, "address",
 				 NULL);
-			data->encoder =
+			data->video_encoder =
 				g_key_file_get_value
-				(file, *groups, "encoder", 
+				(file, *groups, "video_encoder", 
+				 NULL);
+			data->sound_encoder =
+				g_key_file_get_value
+				(file, *groups, "sound_encoder", 
 				 NULL);
 			data->width =
 				g_key_file_get_integer
@@ -122,6 +129,9 @@ static gboolean config_decode(GKeyFile *file, struct config_head *config){
 				g_key_file_get_integer
 				(file, *groups, "height", 
 				 NULL);
+			data->sound_device =
+				g_key_file_get_value
+				(file, *groups, "sound_device", NULL);
 
 			data->r.pipeline = NULL;
 
@@ -153,8 +163,10 @@ static gboolean config_set_default(struct config_head *config){
         	current = next;
                 data = g_sequence_get(current);
 
-		if (NULL == data->encoder)
-			data->encoder = config->general->encoder;
+		if (NULL == data->video_encoder)
+			data->video_encoder = config->general->video_encoder;
+		if (NULL == data->sound_encoder)
+			data->sound_encoder = config->general->sound_encoder;
 		if (NULL == data->address)
 			data->address = config->general->address;
 		if (NULL == data->service)

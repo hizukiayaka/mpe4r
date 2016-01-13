@@ -28,10 +28,20 @@ gpointer rtsp_server_instance(gpointer data)
 	 * that be used to map uri mount points to media factories */
 	mounts = gst_rtsp_server_get_mount_points(server);
 
-	str = g_strdup_printf("( "
-			      "v4l2src device=%s ! video/x-raw, width=%d, height=%d ! "
-			      " videoconvert ! %s ! h264parse ! rtph264pay pt=96 name=pay0 "
-			      ")", priv->dev_path, priv->width, priv->height, priv->encoder);
+	if ((NULL != priv->sound_device) && (NULL != priv->sound_encoder)) {
+		str = g_strdup_printf("( "
+				      "v4l2src device=%s ! video/x-raw, width=%d, height=%d ! "
+				      " videoconvert ! %s ! h264parse ! rtph264pay pt=96 name=pay0 "
+				      " alsasrc device=\"%s\" ! audioconvert ! %s ! rtpac3pay  pt=96 name=pay1 "
+				      ")", priv->dev_path, priv->width, priv->height, priv->video_encoder,
+				      priv->sound_device, priv->sound_encoder);
+	}
+	else {
+		str = g_strdup_printf("( "
+				      "v4l2src device=%s ! video/x-raw, width=%d, height=%d ! "
+				      " videoconvert ! %s ! h264parse ! rtph264pay pt=96 name=pay0 "
+				      ")", priv->dev_path, priv->width, priv->height, priv->video_encoder);
+	}
 	/* make a media factory for a test stream. The default media factory can use
 	 * gst-launch syntax to create pipelines. 
 	 * any launch line works as long as it contains elements named pay%d. Each
@@ -53,7 +63,7 @@ gpointer rtsp_server_instance(gpointer data)
 	gst_rtsp_server_attach(server, NULL);
 
 	/* start serving */
-	GST_INFO_OBJECT(factory, "stream ready at rtsp://%s:%s%s",
+	GST_INFO_OBJECT(factory, "stream ready at rtsp://%s:%s/%s",
 			priv->address, priv->service, priv->mount);
 	return NULL;
 }

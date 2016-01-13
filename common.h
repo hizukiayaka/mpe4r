@@ -15,7 +15,9 @@ struct stream_config{
 	gboolean enable;
 	gchar *name;
 	gchar *dev_path;
-	gchar *encoder;
+	gchar *sound_device;
+	gchar *video_encoder;
+	gchar *sound_encoder;
 	gchar *address;
 	gchar *service;
 	gchar *mount;
